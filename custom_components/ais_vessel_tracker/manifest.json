@@ -1,0 +1,16 @@
+{
+  "domain": "ais_vessel_tracker",
+  "name": "AIS Vessel Tracker",
+  "version": "0.1.0",
+  "documentation": "https://aisstream.io/documentation",
+  "codeowners": [],
+  "config_flow": true,
+  "integration_type": "service",
+  "iot_class": "cloud_push",
+  "single_config_entry": true,
+  "categories": [
+    "vehicles_transport",
+    "presence_location.trackers"
+  ],
+  "requirements": []
+}

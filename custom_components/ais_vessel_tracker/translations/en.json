@@ -1,0 +1,43 @@
+{
+  "title": "AIS Vessel Tracker",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to AISStream",
+        "description": "Enter your AISStream API key and the vessels you want to track. AIS is a live stream: coordinates appear after a vessel transmits within coverage.",
+        "data": {"api_key": "AISStream API key", "vessels": "Vessels (one MMSI per line)"},
+        "data_description": {
+          "api_key": "Create a key at aisstream.io. It is stored by Home Assistant and never included in the entity attributes.",
+          "vessels": "Each line: 9-digit MMSI or 9-digit MMSI | Friendly name. Example: 211234567 | My ship. Up to 200 vessels."
+        }
+      },
+      "reconfigure": {
+        "title": "Change AISStream API key",
+        "description": "Replace the key used for the existing AISStream subscription.",
+        "data": {"api_key": "New AISStream API key"},
+        "data_description": {"api_key": "The existing vessel list is retained."}
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to AISStream. Check your connection and try again.",
+      "invalid_auth": "Enter a valid API key.",
+      "invalid_mmsi": "Invalid vessel list. Enter one unique 9-digit MMSI per line, optionally followed by | Name (maximum 200).",
+      "subscription_rejected": "AISStream did not confirm the subscription. Check the key and service limits."
+    },
+    "abort": {"already_configured": "AISStream is already configured.", "reconfigure_successful": "The AISStream API key was changed."}
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure tracked vessels",
+        "description": "Edit the list to add or remove ships. Stale position reports become unavailable after the configured age.",
+        "data": {"vessels": "Vessels (one MMSI per line)", "max_age_minutes": "Position maximum age (minutes)"},
+        "data_description": {
+          "vessels": "Each line: MMSI or MMSI | Friendly name. Up to 200 unique 9-digit identifiers.",
+          "max_age_minutes": "Positions older than this are marked unavailable (1–10080 minutes)."
+        }
+      }
+    },
+    "error": {"invalid_mmsi": "Invalid vessel list. Use a unique 9-digit MMSI on each line (maximum 200)."}
+  }
+}
