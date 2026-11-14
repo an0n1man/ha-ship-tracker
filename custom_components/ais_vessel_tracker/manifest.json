@@ -2,8 +2,11 @@
   "domain": "ais_vessel_tracker",
   "name": "AIS Vessel Tracker",
   "version": "0.1.0",
-  "documentation": "https://aisstream.io/documentation",
-  "codeowners": [],
+  "documentation": "https://github.com/an0n1man/ha-ship-tracker",
+  "issue_tracker": "https://github.com/an0n1man/ha-ship-tracker/issues",
+  "codeowners": [
+    "@an0n1man"
+  ],
   "config_flow": true,
   "integration_type": "service",
   "iot_class": "cloud_push",

@@ -48,7 +48,7 @@ If the Home Assistant container maps a host directory to `/config`, place the `c
 
 ### HACS / Marketplace
 
-The source tree follows the usual custom integration layout. To install it through a custom repository in HACS / Marketplace, **you must first publish this folder as a GitHub repository** and add that repository to your custom integrations. The ZIP itself is intended for the manual installation described above.
+Add `https://github.com/an0n1man/ha-ship-tracker` as an **Integration** custom repository in HACS / Marketplace, then install **AIS Vessel Tracker** from the integration list. The repository includes the HACS manifest and local brand icon required for validation.
 
 ## Changing the list of ships
 
