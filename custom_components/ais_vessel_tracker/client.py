@@ -55,9 +55,18 @@ class AISStreamClient:
         self._wanted = set(self.states)
         self._max_age = timedelta(minutes=max_age_minutes)
         self._callbacks: dict[str, set[Callable[[], None]]] = defaultdict(set)
+        self._communication_callbacks: set[Callable[[], None]] = set()
         self._worker: asyncio.Task[None] | None = None
         self._expiry_worker: asyncio.Task[None] | None = None
         self.connected = False
+        self.connection_count = 0
+        self.messages_received = 0
+        self.position_reports_received = 0
+        self.last_connected_at: datetime | None = None
+        self.last_disconnected_at: datetime | None = None
+        self.last_message_at: datetime | None = None
+        self.last_error_at: datetime | None = None
+        self.last_error_type: str | None = None
 
     def subscription(self) -> dict:
         """Build a complete filter subscription for the stream."""
@@ -97,6 +106,15 @@ class AISStreamClient:
 
         return unsubscribe
 
+    def subscribe_communication(self, callback: Callable[[], None]) -> Callable[[], None]:
+        """Register a callback for connection and stream-message diagnostics."""
+        self._communication_callbacks.add(callback)
+
+        def unsubscribe() -> None:
+            self._communication_callbacks.discard(callback)
+
+        return unsubscribe
+
     def has_fresh_position(self, mmsi: str) -> bool:
         """Return True only when actual reported position is within max age."""
         state = self.states[mmsi]
@@ -119,8 +137,11 @@ class AISStreamClient:
 
     def process_message(self, message: dict) -> None:
         """Process one AISStream message and notify the affected tracker."""
+        self.messages_received += 1
+        self.last_message_at = datetime.now(timezone.utc)
         update = parse_ais_message(message, self._wanted)
         if update is None:
+            self._notify_communication()
             return
         state = self.states[update.mmsi]
         changed = False
@@ -128,6 +149,7 @@ class AISStreamClient:
             state.ais_name = update.name
             changed = True
         if update.has_position:
+            self.position_reports_received += 1
             # Use the observation timestamp from the service. Never let a
             # delayed/out-of-order message move the device backwards in time.
             timestamp = update.reported_at or datetime.now(timezone.utc)
@@ -145,16 +167,33 @@ class AISStreamClient:
                 changed = True
         if changed:
             self._notify(update.mmsi)
+            self._notify_communication()
 
     def _notify(self, mmsi: str) -> None:
         for callback in tuple(self._callbacks[mmsi]):
             callback()
 
+    def _notify_communication(self) -> None:
+        for callback in tuple(self._communication_callbacks):
+            callback()
+
     def _set_connected(self, value: bool) -> None:
         if self.connected != value:
             self.connected = value
+            now = datetime.now(timezone.utc)
+            if value:
+                self.connection_count += 1
+                self.last_connected_at = now
+            else:
+                self.last_disconnected_at = now
             for mmsi in self.states:
                 self._notify(mmsi)
+            self._notify_communication()
+
+    def _record_error(self, err: BaseException) -> None:
+        self.last_error_at = datetime.now(timezone.utc)
+        self.last_error_type = type(err).__name__
+        self._notify_communication()
 
     async def _expiry_loop(self) -> None:
         """Update HA when a ship's report ages out without any new messages."""
@@ -195,8 +234,10 @@ class AISStreamClient:
             except asyncio.CancelledError:
                 raise
             except (ClientError, ConnectionError, OSError, TimeoutError, ValueError) as err:
+                self._record_error(err)
                 _LOGGER.warning("AISStream connection lost: %s; reconnecting", err)
-            except Exception:
+            except Exception as err:
+                self._record_error(err)
                 _LOGGER.exception("Unexpected AISStream error; reconnecting")
             finally:
                 self._set_connected(False)

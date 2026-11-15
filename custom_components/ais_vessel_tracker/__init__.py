@@ -14,7 +14,7 @@ from .const import (
     DEFAULT_MAX_AGE_MINUTES,
 )
 
-PLATFORMS = ["device_tracker"]
+PLATFORMS = ["device_tracker", "sensor"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

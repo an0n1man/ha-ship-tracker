@@ -39,6 +39,46 @@ if "homeassistant.core" not in sys.modules:
     sys.modules["homeassistant.core"] = core
 client_module = load("client")
 
+components = ModuleType("homeassistant.components")
+components.__path__ = []
+sys.modules["homeassistant.components"] = components
+sensor_component = ModuleType("homeassistant.components.sensor")
+
+
+class SensorEntity:
+    async def async_added_to_hass(self):
+        return None
+
+    def async_on_remove(self, callback):
+        return None
+
+    def schedule_update_ha_state(self):
+        return None
+
+
+sensor_component.SensorDeviceClass = SimpleNamespace(ENUM="enum", TIMESTAMP="timestamp")
+sensor_component.SensorEntity = SensorEntity
+sensor_component.SensorStateClass = SimpleNamespace(TOTAL_INCREASING="total_increasing")
+sys.modules["homeassistant.components.sensor"] = sensor_component
+
+config_entries = ModuleType("homeassistant.config_entries")
+config_entries.ConfigEntry = type("ConfigEntry", (), {})
+sys.modules["homeassistant.config_entries"] = config_entries
+
+const = ModuleType("homeassistant.const")
+const.EntityCategory = SimpleNamespace(DIAGNOSTIC="diagnostic")
+sys.modules["homeassistant.const"] = const
+
+entity = ModuleType("homeassistant.helpers.entity")
+entity.DeviceInfo = dict
+sys.modules["homeassistant.helpers.entity"] = entity
+
+entity_platform = ModuleType("homeassistant.helpers.entity_platform")
+entity_platform.AddConfigEntryEntitiesCallback = object
+sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
+
+sensor_module = load("sensor")
+
 
 MMSI = "211234567"
 
@@ -144,6 +184,48 @@ class TestClient(unittest.TestCase):
         unsubscribe()
         self.client.process_message(example_message(1.0, 2.0, stamp=(now + timedelta(seconds=1)).isoformat()))
         self.assertEqual(len(called), 1)
+
+    def test_communication_metrics_and_callback(self):
+        calls = []
+        unsubscribe = self.client.subscribe_communication(lambda: calls.append(True))
+
+        self.client._set_connected(True)
+        self.assertEqual(self.client.connection_count, 1)
+        self.assertIsNotNone(self.client.last_connected_at)
+
+        self.client.process_message(example_message(stamp=datetime.now(timezone.utc).isoformat()))
+        self.assertEqual(self.client.messages_received, 1)
+        self.assertEqual(self.client.position_reports_received, 1)
+        self.assertIsNotNone(self.client.last_message_at)
+
+        self.client._set_connected(False)
+        self.assertIsNotNone(self.client.last_disconnected_at)
+        self.assertEqual(len(calls), 3)
+
+        unsubscribe()
+        self.client.process_message(example_message(stamp=datetime.now(timezone.utc).isoformat()))
+        self.assertEqual(len(calls), 3)
+
+    def test_communication_sensor_values(self):
+        entry = SimpleNamespace(entry_id="entry-id")
+        connection = sensor_module.AISStreamConnectionSensor(self.client, entry)
+        last_message = sensor_module.AISStreamLastMessageSensor(self.client, entry)
+        messages_received = sensor_module.AISStreamMessagesReceivedSensor(self.client, entry)
+        position_reports = sensor_module.AISStreamPositionReportsSensor(self.client, entry)
+
+        self.assertEqual(connection.native_value, "disconnected")
+        self.assertIsNone(last_message.native_value)
+        self.assertEqual(messages_received.native_value, 0)
+        self.assertEqual(position_reports.native_value, 0)
+
+        self.client._set_connected(True)
+        self.client.process_message(example_message(stamp=datetime.now(timezone.utc).isoformat()))
+
+        self.assertEqual(connection.native_value, "connected")
+        self.assertIsNotNone(last_message.native_value)
+        self.assertEqual(messages_received.native_value, 1)
+        self.assertEqual(position_reports.native_value, 1)
+        self.assertEqual(connection.extra_state_attributes["connection_count"], 1)
 
     def test_out_of_order_ignored(self):
         now = datetime.now(timezone.utc)

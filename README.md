@@ -96,6 +96,17 @@ hours_to_show: 24
 
 Use the real entity IDs assigned by Home Assistant. A map card can show the ship's last position, and the history depends on your recorder retention settings.
 
+### Stream diagnostics
+
+The integration also creates diagnostic sensors for its shared AISStream connection:
+
+- **Connection**: current WebSocket state, with connection/message counts and last connection, disconnection, message, and error timestamps as attributes.
+- **Last message**: local receipt time of the most recent decoded AISStream message.
+- **Messages received**: total decoded stream messages since the integration started.
+- **Position reports received**: total valid position reports since the integration started.
+
+The two counters reset whenever Home Assistant reloads or restarts the integration.
+
 ## Data accuracy, limitations, and privacy
 
 - **AIS is event-driven**. There is no fixed refresh frequency, and receiving data can be delayed or stop when a ship is out of AIS reception coverage. AISStream does not guarantee historic replay or service uptime.
