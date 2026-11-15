@@ -110,9 +110,12 @@ def example_message(latitude=0.0, longitude=0.0, stamp=None, message_type="Posit
 
 class TestParsing(unittest.TestCase):
     def test_vessel_list(self):
-        vessels = parsing.parse_vessels("211234567 | My boat\n219876543\n")
-        self.assertEqual(vessels, {"211234567": "My boat", "219876543": ""})
-        self.assertEqual(parsing.format_vessels(vessels), "211234567 | My boat\n219876543")
+        vessels = parsing.parse_vessels("211234567 | My boat\n219876543; Second boat\n")
+        self.assertEqual(vessels, {"211234567": "My boat", "219876543": "Second boat"})
+        self.assertEqual(
+            parsing.format_vessels(vessels),
+            "211234567 | My boat\n219876543 | Second boat",
+        )
 
     def test_reject_invalid_and_duplicate_mmsis(self):
         for value in ("", "21123", "211234567\n211234567", "211234567, 219876543", "211234567 | " + "x" * 81):
@@ -162,6 +165,21 @@ class TestParsing(unittest.TestCase):
         self.assertIsNone(update.course_deg)
         self.assertIsNone(update.heading_deg)
 
+    def test_subscription_confirmation_compression(self):
+        confirmation = {
+            "MessageType": "SubscriptionConfirmation",
+            "Message": {"CompressionEnabled": True},
+        }
+        self.assertTrue(parsing.parse_subscription_confirmation(confirmation))
+        confirmation["Message"]["CompressionEnabled"] = False
+        self.assertFalse(parsing.parse_subscription_confirmation(confirmation))
+        self.assertIsNone(parsing.parse_subscription_confirmation({"MessageType": "PositionReport"}))
+        self.assertIsNone(
+            parsing.parse_subscription_confirmation(
+                {"MessageType": "SubscriptionConfirmation", "Message": {}}
+            )
+        )
+
 
 class TestClient(unittest.TestCase):
     def setUp(self):
@@ -172,6 +190,23 @@ class TestClient(unittest.TestCase):
         self.assertEqual(sub["FiltersShipMMSI"], [MMSI])
         self.assertIn("PositionReport", sub["FilterMessageTypes"])
         self.assertEqual(sub["APIKey"], "test-key")
+
+    def test_subscription_confirmation(self):
+        confirmation = {
+            "MessageType": "SubscriptionConfirmation",
+            "Message": {"CompressionEnabled": True},
+        }
+        self.client._accept_subscription_confirmation(confirmation)
+        self.assertTrue(self.client.compression_enabled)
+
+        confirmation["Message"]["CompressionEnabled"] = False
+        with self.assertLogs(client_module._LOGGER, level="WARNING") as logs:
+            self.client._accept_subscription_confirmation(confirmation)
+        self.assertFalse(self.client.compression_enabled)
+        self.assertIn("permessage-deflate", logs.output[0])
+
+        with self.assertRaises(ConnectionError):
+            self.client._accept_subscription_confirmation({"MessageType": "SubscriptionConfirmation"})
 
     def test_incoming_and_callback(self):
         called = []
@@ -205,6 +240,21 @@ class TestClient(unittest.TestCase):
         unsubscribe()
         self.client.process_message(example_message(stamp=datetime.now(timezone.utc).isoformat()))
         self.assertEqual(len(calls), 3)
+
+    def test_communication_callback_for_out_of_order_message(self):
+        calls = []
+        self.client.subscribe_communication(lambda: calls.append(True))
+        now = datetime.now(timezone.utc)
+
+        self.client.process_message(example_message(stamp=now.isoformat()))
+        calls.clear()
+        self.client.process_message(
+            example_message(stamp=(now - timedelta(minutes=1)).isoformat())
+        )
+
+        self.assertEqual(self.client.messages_received, 2)
+        self.assertEqual(self.client.position_reports_received, 2)
+        self.assertEqual(len(calls), 1)
 
     def test_communication_sensor_values(self):
         entry = SimpleNamespace(entry_id="entry-id")

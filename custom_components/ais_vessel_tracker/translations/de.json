@@ -5,10 +5,10 @@
       "user": {
         "title": "Mit AISStream verbinden",
         "description": "AISStream-API-Schlüssel und die zu überwachenden Schiffe eingeben. AIS ist ein Livestream: Die Position erscheint erst nach einer empfangenen Schiffsmeldung.",
-        "data": {"api_key": "AISStream-API-Schlüssel", "vessels": "Schiffe (eine MMSI je Zeile)"},
+        "data": {"api_key": "AISStream-API-Schlüssel", "vessels": "Schiffe (eine MMSI je Zeile, optionaler Name)"},
         "data_description": {
           "api_key": "API-Schlüssel auf aisstream.io erstellen. Er wird in Home Assistant gespeichert und nicht als Entitätsattribut ausgegeben.",
-          "vessels": "Pro Zeile: neunstellige MMSI oder MMSI | Anzeigename. Beispiel: 211234567 | Mein Schiff. Maximal 200 Schiffe."
+          "vessels": "Pro Zeile: neunstellige MMSI, optional gefolgt von | oder ; und einem Gerätenamen. Beispiel: 211234567; Mein Schiff. Maximal 200 Schiffe."
         }
       },
       "reconfigure": {
@@ -21,7 +21,7 @@
     "error": {
       "cannot_connect": "AISStream ist nicht erreichbar. Netzwerkverbindung prüfen und erneut versuchen.",
       "invalid_auth": "Bitte einen gültigen API-Schlüssel eingeben.",
-      "invalid_mmsi": "Schiffsliste ungültig. Pro Zeile eine eindeutige neunstellige MMSI, optional mit | Name (maximal 200).",
+      "invalid_mmsi": "Schiffsliste ungültig. Pro Zeile eine eindeutige neunstellige MMSI, optional mit | oder ; und einem Gerätenamen (maximal 200).",
       "subscription_rejected": "AISStream hat das Abonnement nicht bestätigt. API-Schlüssel und Dienstlimits prüfen."
     },
     "abort": {"already_configured": "AISStream ist bereits eingerichtet.", "reconfigure_successful": "AISStream-API-Schlüssel wurde geändert."}
@@ -31,13 +31,13 @@
       "init": {
         "title": "Schiffe konfigurieren",
         "description": "Schiffe hinzufügen oder entfernen. Veraltete Positionen werden nach Ablauf der eingestellten Zeit nicht verfügbar.",
-        "data": {"vessels": "Schiffe (eine MMSI je Zeile)", "max_age_minutes": "Maximales Positionsalter (Minuten)"},
+        "data": {"vessels": "Schiffe (eine MMSI je Zeile, optionaler Name)", "max_age_minutes": "Maximales Positionsalter (Minuten)"},
         "data_description": {
-          "vessels": "Pro Zeile: MMSI oder MMSI | Anzeigename. Maximal 200 eindeutige neunstellige Nummern.",
+          "vessels": "Pro Zeile: MMSI, optional gefolgt von | oder ; und einem Gerätenamen. Maximal 200 eindeutige neunstellige Nummern.",
           "max_age_minutes": "Ältere Positionen werden als nicht verfügbar markiert (1–10080 Minuten)."
         }
       }
     },
-    "error": {"invalid_mmsi": "Schiffsliste ungültig. Pro Zeile eine eindeutige neunstellige MMSI (maximal 200)."}
+    "error": {"invalid_mmsi": "Schiffsliste ungültig. Pro Zeile eine eindeutige neunstellige MMSI, optional mit | oder ; und einem Gerätenamen (maximal 200)."}
   }
 }

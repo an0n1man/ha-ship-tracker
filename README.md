@@ -30,12 +30,12 @@ Designed for Home Assistant Core **2026.11**. This is a community-style custom i
 3. Restart Home Assistant.
 4. Go to **Settings → Devices & services → Add integration**.
 5. Find **AIS Vessel Tracker** (or **AIS-Schiffsverfolgung**).
-6. Paste your AISStream API key and MMSIs (one per line). You may add a friendly name after a pipe (`|`).
+6. Paste your AISStream API key and MMSIs (one per line). You may add the Home Assistant device name after a pipe (`|`) or semicolon (`;`).
 
 Example vessel list (illustrative MMSIs; replace with real vessels):
 
 ```text
-211234567 | My ship
+211234567; My ship
 219876543 | Second ship
 368207620
 ```
@@ -100,7 +100,7 @@ Use the real entity IDs assigned by Home Assistant. A map card can show the ship
 
 The integration also creates diagnostic sensors for its shared AISStream connection:
 
-- **Connection**: current WebSocket state, with connection/message counts and last connection, disconnection, message, and error timestamps as attributes.
+- **Connection**: current WebSocket state, negotiated compression status, connection/message counts, and last connection, disconnection, message, and error timestamps as attributes.
 - **Last message**: local receipt time of the most recent decoded AISStream message.
 - **Messages received**: total decoded stream messages since the integration started.
 - **Position reports received**: total valid position reports since the integration started.

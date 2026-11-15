@@ -78,9 +78,10 @@ class AISStreamConnectionSensor(AISStreamSensor):
         return "connected" if self._client.connected else "disconnected"
 
     @property
-    def extra_state_attributes(self) -> dict[str, str | int | None]:
+    def extra_state_attributes(self) -> dict[str, str | int | bool | None]:
         """Return non-sensitive stream health metadata."""
         return {
+            "compression_enabled": self._client.compression_enabled,
             "connection_count": self._client.connection_count,
             "messages_received": self._client.messages_received,
             "position_reports_received": self._client.position_reports_received,

@@ -23,7 +23,7 @@ from .const import (
     STREAM_UNIQUE_ID,
     STREAM_URL,
 )
-from .parsing import format_vessels, parse_vessels
+from .parsing import format_vessels, parse_subscription_confirmation, parse_vessels
 
 
 class CannotConnect(Exception):
@@ -56,7 +56,7 @@ async def verify_connection(hass, api_key: str, mmsis: list[str]) -> None:
                 result = json.loads(response.data)
             except (ValueError, TypeError) as exc:
                 raise SubscriptionRejected from exc
-            if not isinstance(result, dict) or result.get("MessageType") != "SubscriptionConfirmation":
+            if parse_subscription_confirmation(result) is None:
                 raise SubscriptionRejected
     except (ClientError, OSError, TimeoutError) as exc:
         raise CannotConnect from exc

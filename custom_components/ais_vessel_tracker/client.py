@@ -15,7 +15,7 @@ from aiohttp import ClientError, ClientSession, WSMsgType
 from homeassistant.core import HomeAssistant
 
 from .const import GLOBAL_BBOX, MESSAGE_TYPES, STREAM_URL
-from .parsing import parse_ais_message
+from .parsing import parse_ais_message, parse_subscription_confirmation
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,6 +59,7 @@ class AISStreamClient:
         self._worker: asyncio.Task[None] | None = None
         self._expiry_worker: asyncio.Task[None] | None = None
         self.connected = False
+        self.compression_enabled: bool | None = None
         self.connection_count = 0
         self.messages_received = 0
         self.position_reports_received = 0
@@ -167,7 +168,7 @@ class AISStreamClient:
                 changed = True
         if changed:
             self._notify(update.mmsi)
-            self._notify_communication()
+        self._notify_communication()
 
     def _notify(self, mmsi: str) -> None:
         for callback in tuple(self._callbacks[mmsi]):
@@ -176,6 +177,17 @@ class AISStreamClient:
     def _notify_communication(self) -> None:
         for callback in tuple(self._communication_callbacks):
             callback()
+
+    def _accept_subscription_confirmation(self, payload: dict | None) -> None:
+        """Record compression negotiated by a documented subscription confirmation."""
+        compression_enabled = parse_subscription_confirmation(payload)
+        if compression_enabled is None:
+            raise ConnectionError("AISStream subscription confirmation was invalid")
+        self.compression_enabled = compression_enabled
+        if not compression_enabled:
+            _LOGGER.warning(
+                "AISStream did not negotiate permessage-deflate; messages may be dropped under load"
+            )
 
     def _set_connected(self, value: bool) -> None:
         if self.connected != value:
@@ -221,8 +233,7 @@ class AISStreamClient:
                     await ws.send_json(self.subscription())
                     response = await asyncio.wait_for(ws.receive(), timeout=12)
                     payload = _decode_frame(response)
-                    if not payload or payload.get("MessageType") != "SubscriptionConfirmation":
-                        raise ConnectionError("AISStream subscription was not confirmed")
+                    self._accept_subscription_confirmation(payload)
                     self._set_connected(True)
                     _LOGGER.info("AISStream subscribed for %s vessels", len(self.states))
                     delay = 5.0

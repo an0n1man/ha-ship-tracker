@@ -18,7 +18,7 @@ _GO_TIME_RE = re.compile(
 
 
 def parse_vessels(value: str) -> dict[str, str]:
-    """Parse one MMSI per line, optionally followed by | vessel name."""
+    """Parse one MMSI per line, optionally followed by | or ; and a vessel name."""
     result: dict[str, str] = {}
     for line in value.splitlines():
         line = line.strip()
@@ -26,7 +26,7 @@ def parse_vessels(value: str) -> dict[str, str]:
             continue
         match = _MMSI_LINE_RE.fullmatch(line)
         if match is None:
-            raise ValueError("Each line must be: 9-digit MMSI [| Vessel name]")
+            raise ValueError("Each line must be: 9-digit MMSI [| or ; Vessel name]")
         mmsi, name = match.group(1), (match.group(2) or "").strip()
         if mmsi in result:
             raise ValueError(f"Duplicate MMSI: {mmsi}")
@@ -66,6 +66,17 @@ def parse_timestamp(value: Any) -> datetime | None:
         return parsed.replace(tzinfo=timezone(offset)).astimezone(timezone.utc)
     except (ValueError, OverflowError):
         return None
+
+
+def parse_subscription_confirmation(message: Any) -> bool | None:
+    """Return negotiated compression from an AISStream confirmation envelope."""
+    if not isinstance(message, dict) or message.get("MessageType") != "SubscriptionConfirmation":
+        return None
+    payload = message.get("Message")
+    if not isinstance(payload, dict):
+        return None
+    compression_enabled = payload.get("CompressionEnabled")
+    return compression_enabled if isinstance(compression_enabled, bool) else None
 
 
 def _coordinate(value: Any, limit: float) -> float | None:
